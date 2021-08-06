@@ -1,3 +1,5 @@
+pub mod demo_inputs;
+
 use anyhow::{Result, ensure};
 
 pub struct Render {
@@ -54,4 +56,9 @@ fn verify_input(input: Input<'_>, cfg: &RenderSettings) -> Result<()> {
     let expect_images = cfg.batch_size * cfg.input_images * cfg.input_height * cfg.input_width * 4;
     ensure!(input.images.len() as u32 == expect_images, "Expected {} values for points, got {}", expect_images, input.images.len());
     Ok(())
+}
+
+pub fn visualize(input: Input<'_>, cfg: &RenderSettings) -> Result<()> {
+    verify_input(input, cfg)?;
+    todo!()
 }
