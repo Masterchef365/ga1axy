@@ -19,5 +19,5 @@ fn main() -> Result<()> {
         images: &images,
     };
 
-    visualize(input, &cfg)
+    visualize(input, &cfg, false)
 }
