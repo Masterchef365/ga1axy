@@ -54,7 +54,7 @@ fn verify_input(input: Input<'_>, cfg: &RenderSettings) -> Result<()> {
     let expect_points = cfg.batch_size * cfg.input_points * 4;
     ensure!(input.points.len() as u32 == expect_points, "Expected {} values for points, got {}", expect_points, input.points.len());
     let expect_images = cfg.batch_size * cfg.input_images * cfg.input_height * cfg.input_width * 4;
-    ensure!(input.images.len() as u32 == expect_images, "Expected {} values for points, got {}", expect_images, input.images.len());
+    ensure!(input.images.len() as u32 == expect_images, "Expected {} values for images, got {}", expect_images, input.images.len());
     Ok(())
 }
 
