@@ -1,4 +1,4 @@
-from ga1axy import PyTrainer
+from ga1axy import PyTrainer, visualize_inputs
 import numpy as np
 
 batch_size = 10
@@ -32,3 +32,5 @@ from PIL import Image
 for img in output:
     img = Image.fromarray(img, 'RGB')
     img.show()
+
+visualize_inputs(points, images)
