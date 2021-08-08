@@ -1,7 +1,7 @@
 use anyhow::Result;
-use ga1axy_render::RenderSettings;
-use ga1axy_render::trainer::Trainer;
-use ga1axy_render::demo_inputs::demo;
+use ga1axy::RenderSettings;
+use ga1axy::trainer::Trainer;
+use ga1axy::demo_inputs::demo;
 
 fn main() -> Result<()> {
     let cfg = RenderSettings {
@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     };
 
     let mut trainer = Trainer::new(cfg)?;
-    let input = ga1axy_render::demo_inputs::random(&cfg);
+    let input = ga1axy::demo_inputs::random(&cfg);
     //let input = demo(&cfg);
 
     let start = std::time::Instant::now();

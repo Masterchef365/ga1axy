@@ -3,6 +3,7 @@ pub mod visualizer;
 mod engine;
 pub mod trainer;
 pub use visualizer::visualize;
+use pyo3::prelude::*;
 
 use anyhow::{ensure, Result};
 
@@ -77,4 +78,20 @@ pub fn points_float_count(cfg: &RenderSettings) -> u32 {
 
 pub fn images_byte_count(cfg: &RenderSettings) -> u32 {
     cfg.batch_size * cfg.input_images * cfg.input_height * cfg.input_width * 4
+}
+
+#[pymodule]
+fn ga1axy(py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<PyTrainer>()?;
+    Ok(())
+}
+
+#[pyclass]
+struct PyTrainer {
+    trainer: trainer::Trainer,
+}
+
+#[pymethods]
+impl PyTrainer {
+    //pub fn new() -> PyRe
 }

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ga1axy_render::{demo_inputs::demo, visualize, RenderSettings};
+use ga1axy::{demo_inputs::demo, visualize, RenderSettings};
 
 fn main() -> Result<()> {
     let cfg = RenderSettings {
@@ -13,7 +13,7 @@ fn main() -> Result<()> {
     };
 
     //let input = demo(&cfg);
-    let input = ga1axy_render::demo_inputs::random(&cfg);
+    let input = ga1axy::demo_inputs::random(&cfg);
 
     visualize(input, cfg, false)
 }
