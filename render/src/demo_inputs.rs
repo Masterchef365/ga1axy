@@ -48,10 +48,10 @@ pub fn demo_images(images: &mut Vec<u8>, cfg: &RenderSettings) {
 
 pub fn random(cfg: &RenderSettings) -> Input {
     let mut rng = rand::thread_rng();
-    let mut points = (0..cfg.batch_size * cfg.input_points * 4)
-        .map(|_| rng.gen_range(0.0..1.0))
+    let points = (0..cfg.batch_size * cfg.input_points * 4)
+        .map(|_| rng.gen_range(-1.0..1.0))
         .collect();
-    let mut images =
+    let images =
         (0..cfg.batch_size * cfg.input_images * cfg.input_height * cfg.input_width * 4)
             .map(|_| rng.gen_range(u8::MIN..u8::MAX))
             .collect();
