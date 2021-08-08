@@ -19,7 +19,7 @@ pub struct Engine {
     descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_pool: vk::DescriptorPool,
     descriptor_set_layout: vk::DescriptorSetLayout,
-    core: SharedCore,
+    pub core: SharedCore,
 }
 
 #[repr(C)]
@@ -459,8 +459,10 @@ impl Engine {
         }
 
         Ok(())
+    }
 
-
+    pub fn cfg(&self) -> RenderSettings {
+        self.cfg
     }
 }
 
