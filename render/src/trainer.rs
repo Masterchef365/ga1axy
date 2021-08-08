@@ -2,8 +2,9 @@ use anyhow::Result;
 use crate::{RenderSettings, Input, Output, engine::Engine};
 use watertender::defaults::DEPTH_FORMAT;
 use watertender::headless_backend::build_core;
-use watertender::prelude::*;
-use watertender::memory::UsageFlags;
+use watertender::memory::{UsageFlags, ManagedImage, ManagedBuffer};
+use watertender::app_info::AppInfo;
+use watertender::{vk, SharedCore, Core};
 use std::sync::Arc;
 
 pub struct Trainer {
@@ -24,7 +25,7 @@ pub struct Trainer {
     core: SharedCore,
 }
 
-const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_UINT;
+const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 
 /*const IDENTITY_MATRICES: [f32; 4 * 4 * 2] = [
     1., 0., 0., 0., 
@@ -62,17 +63,17 @@ impl Trainer {
         let command_buffer =
             unsafe { core.device.allocate_command_buffers(&allocate_info) }.result()?[0];
 
-        // Create engine
-        let engine = Engine::new(core.clone(), cfg, false, command_buffer)?;
-
         // Create render pass
         let render_pass = create_render_pass(&core)?;
+
+        // Create engine
+        let engine = Engine::new(core.clone(), cfg, render_pass, command_buffer)?;
 
         // Create frame download staging buffer
         let fb_size_bytes = (cfg.output_height * cfg.output_width * 4) as u64 * std::mem::size_of::<f32>() as u64;
         let bi = vk::BufferCreateInfoBuilder::new()
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
+            .usage(vk::BufferUsageFlags::TRANSFER_DST)
             .size(fb_size_bytes);
 
         let mut fb_download_buf = ManagedBuffer::new(

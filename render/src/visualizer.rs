@@ -25,7 +25,7 @@ impl MainLoop<RenderInputs> for Visualizer {
     fn new(core: &SharedCore, mut platform: Platform<'_>, (input, cfg): RenderInputs) -> Result<Self> {
         let mut starter_kit = StarterKit::new(core.clone(), &mut platform)?;
         let camera = MultiPlatformCamera::new(&mut platform);
-        let mut engine = Engine::new(core.clone(), cfg, platform.is_vr(), starter_kit.current_command_buffer())?;
+        let mut engine = Engine::new(core.clone(), cfg, starter_kit.render_pass, starter_kit.current_command_buffer())?;
 
         engine.upload(0, &input)?;
         engine.prepare(starter_kit.current_command_buffer())?;

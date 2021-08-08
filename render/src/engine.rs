@@ -40,7 +40,12 @@ pub struct QuadInstance {
 const TEX_IMAGE_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 
 impl Engine {
-    pub fn new(core: SharedCore, cfg: RenderSettings, vr: bool, command_buffer: vk::CommandBuffer) -> Result<Self> {
+    pub fn new(
+        core: SharedCore, 
+        cfg: RenderSettings, 
+        render_pass: vk::RenderPass,
+        command_buffer: vk::CommandBuffer
+    ) -> Result<Self> {
         // Create staging buffer
         let mut staging_buffer = StagingBuffer::new(core.clone())?;
 
@@ -227,8 +232,6 @@ impl Engine {
 
         let pipeline_layout =
             unsafe { core.device.create_pipeline_layout(&create_info, None, None) }.result()?;
-
-        let render_pass = create_render_pass(&core, vr)?;
 
         // Pipeline
         let pipeline = shader(
