@@ -15,12 +15,12 @@ layout(location = 1) in vec3 vert_color;
 layout(location = 2) in vec4 instance;
 
 // To fragment shader
-layout(location = 0) out float frag_layer;
+layout(location = 0) out vec3 frag_inputs;
 
 void main() {
     vec3 pos = instance.xyz;
-    float layer = instance.w;
     vec4 screen_pos = camera[gl_ViewIndex] * vec4(pos, 1.0);
     gl_Position = screen_pos + vec4(vert_pos, 0.);
-    frag_layer = instance.w;
+    //frag_inputs = vec3(vert_color.xy, instance.w);
+    frag_inputs = vec3(vert_color.xy, instance.w / 100.);
 }
