@@ -18,9 +18,7 @@ layout(location = 2) in vec4 instance;
 layout(location = 0) out vec3 frag_inputs;
 
 void main() {
-    vec3 pos = instance.xyz;
-    vec4 screen_pos = camera[gl_ViewIndex] * vec4(pos, 1.0);
+    vec4 screen_pos = camera[gl_ViewIndex] * vec4(instance.xyz, 1.0);
     gl_Position = screen_pos + vec4(vert_pos, 0.);
-    //frag_inputs = vec3(vert_color.xy, instance.w);
     frag_inputs = vec3(vert_color.xy, instance.w);
 }

@@ -331,16 +331,16 @@ impl Engine {
 
     pub fn upload(&mut self, idx: usize, input: &Input) -> Result<()> {
         // Upload points
-        let points_stride = (self.cfg.input_points * 4) as usize;
-        let points = &input.points[points_stride*idx..points_stride*(idx+1)];
+        let points_batch_stride = (self.cfg.input_points * 4) as usize;
+        let points = &input.points[points_batch_stride*idx..points_batch_stride*(idx+1)];
 
         self.instances.write_bytes(0, &bytemuck::cast_slice(&points))?;
 
         // Upload images
-        let image_float_stride = (self.cfg.input_images * self.cfg.input_height * self.cfg.input_width * 4) as usize;
-        let image_data = &input.images[image_float_stride*idx..image_float_stride*(idx+1)];
+        let image_batch_stride = (self.cfg.input_images * self.cfg.input_height * self.cfg.input_width * 4) as usize;
+        let image_data = &input.images[image_batch_stride*idx..image_batch_stride*(idx+1)];
 
-        self.image_staging_buffer.write_bytes(0, &bytemuck::cast_slice(&image_data))?;
+        self.image_staging_buffer.write_bytes(0, bytemuck::cast_slice(image_data))?;
 
         Ok(())
     }

@@ -3,8 +3,8 @@ use crate::{RenderSettings, Input};
 pub fn demo(cfg: &RenderSettings) -> Input {
     let mut points = vec![];
     let mut images = vec![];
-    for _ in 0..cfg.batch_size {
-        demo_points(&mut points, cfg);
+    for sample in 0..cfg.batch_size {
+        demo_points(&mut points, cfg, sample);
         demo_images(&mut images, cfg);
     }
     Input {
@@ -13,10 +13,15 @@ pub fn demo(cfg: &RenderSettings) -> Input {
     }
 }
 
-pub fn demo_points(points: &mut Vec<f32>, cfg: &RenderSettings) {
+pub fn demo_points(points: &mut Vec<f32>, cfg: &RenderSettings, sample: u32) {
     points.extend(
         (0..cfg.input_points)
-            .map(|i| [i as f32, 0., 0., i as f32])
+            .map(|i| {
+                let frac = i as f32 / cfg.input_points as f32;
+                let mut point = [0., 0., 0., 1. - frac];
+                point[sample as usize % 3] = i as f32;
+                point
+            })
             .flatten()
     );
 }
@@ -24,8 +29,9 @@ pub fn demo_points(points: &mut Vec<f32>, cfg: &RenderSettings) {
 pub fn demo_images(images: &mut Vec<u8>, cfg: &RenderSettings) {
     let r = cfg.input_width as i32 / 2;
     for layer in 0..cfg.input_images {
+        let frac = ((layer * 255) / cfg.input_images) as u8;
         let mut color = [0, 0, 0, 0xFF];
-        color[layer as usize % 3] = 0xFF;
+        color[layer as usize % 3] = frac;
 
         for y in 0..cfg.input_height {
             for x in 0..cfg.input_width {
