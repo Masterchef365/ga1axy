@@ -3,9 +3,9 @@ use crate::{RenderSettings, Input};
 pub fn demo(cfg: &RenderSettings) -> Input {
     let mut points = vec![];
     let mut images = vec![];
-    for batch in 0..cfg.batch_size {
+    for _ in 0..cfg.batch_size {
         demo_points(&mut points, cfg);
-        demo_images(&mut images, cfg, batch);
+        demo_images(&mut images, cfg);
     }
     Input {
         points,
@@ -21,10 +21,10 @@ pub fn demo_points(points: &mut Vec<f32>, cfg: &RenderSettings) {
     );
 }
 
-pub fn demo_images(images: &mut Vec<u8>, cfg: &RenderSettings, batch: u32) {
+pub fn demo_images(images: &mut Vec<u8>, cfg: &RenderSettings) {
     let r = cfg.input_width as i32 / 2;
     for layer in 0..cfg.input_images {
-        let mut color = [0, 0, 0, 0xFF - batch as u8];
+        let mut color = [0, 0, 0, 0xFF];
         color[layer as usize % 3] = 0xFF;
 
         for y in 0..cfg.input_height {

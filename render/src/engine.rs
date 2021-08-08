@@ -15,7 +15,6 @@ pub struct Engine {
     pipeline_layout: vk::PipelineLayout,
     image_extent: vk::Extent3D,
     scene_ubo: FrameDataUbo<SceneData>,
-    staging_buffer: StagingBuffer,
     descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_pool: vk::DescriptorPool,
     descriptor_set_layout: vk::DescriptorSetLayout,
@@ -56,7 +55,7 @@ impl Engine {
             .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
             .size(instance_buffer_size as _);
 
-        let mut instances = ManagedBuffer::new(
+        let instances = ManagedBuffer::new(
             core.clone(),
             bi,
             UsageFlags::UPLOAD,
@@ -69,7 +68,7 @@ impl Engine {
             .usage(vk::BufferUsageFlags::TRANSFER_SRC)
             .size(image_buffer_size as _);
 
-        let mut image_staging_buffer = ManagedBuffer::new(
+        let image_staging_buffer = ManagedBuffer::new(
             core.clone(),
             bi,
             UsageFlags::UPLOAD,
@@ -254,7 +253,6 @@ impl Engine {
 
 
         Ok(Self {
-            staging_buffer,
             image_extent,
             image,
             cfg,
@@ -476,10 +474,6 @@ unsafe impl bytemuck::Zeroable for QuadInstance {}
 unsafe impl bytemuck::Pod for QuadInstance {}
 
 impl QuadInstance {
-    pub fn new([x, y, z]: [f32; 3], layer: f32) -> Self {
-        Self { x, y, z, layer }
-    }
-
     pub fn binding_description() -> vk::VertexInputBindingDescriptionBuilder<'static> {
         vk::VertexInputBindingDescriptionBuilder::new()
             .binding(1)
@@ -647,4 +641,13 @@ fn quad(size: f32) -> (Vec<Vertex>, Vec<u32>) {
     ];
 
     (vertices, indices)
+}
+
+impl Drop for Engine {
+    fn drop(&mut self) {
+        unsafe {
+            self.core.device.destroy_descriptor_pool(Some(self.descriptor_pool), None);
+            self.core.device.destroy_descriptor_set_layout(Some(self.descriptor_set_layout), None);
+        }
+    }
 }

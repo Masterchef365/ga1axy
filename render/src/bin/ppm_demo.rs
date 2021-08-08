@@ -16,7 +16,11 @@ fn main() -> Result<()> {
 
     let mut trainer = Trainer::new(cfg)?;
     let input = demo(&cfg);
+
+    let start = std::time::Instant::now();
     let output = trainer.frame(&input)?;
+    let end = start.elapsed();
+    println!("Frame took {}s", end.as_secs_f32());
 
     let frame_len = cfg.output_width * cfg.output_height * 3;
     for (idx, frame) in output.images.chunks_exact(frame_len as _).enumerate() {

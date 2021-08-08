@@ -1,14 +1,10 @@
 use watertender::prelude::*;
-use watertender::memory::UsageFlags;
-use defaults::FRAMES_IN_FLIGHT;
 use anyhow::Result;
-use crate::{Input, RenderSettings, engine::{Engine, SceneData}};
-use std::ffi::CString;
+use crate::{Input, RenderSettings, engine::Engine};
 
 struct Visualizer {
     engine: Engine,
     camera: MultiPlatformCamera,
-    input: Input,
     starter_kit: StarterKit,
 }
 
@@ -23,27 +19,24 @@ pub fn visualize(input: Input, cfg: RenderSettings, vr: bool) -> Result<()> {
 
 impl MainLoop<RenderInputs> for Visualizer {
     fn new(core: &SharedCore, mut platform: Platform<'_>, (input, cfg): RenderInputs) -> Result<Self> {
-        let mut starter_kit = StarterKit::new(core.clone(), &mut platform)?;
+        let starter_kit = StarterKit::new(core.clone(), &mut platform)?;
         let camera = MultiPlatformCamera::new(&mut platform);
         let mut engine = Engine::new(core.clone(), cfg, starter_kit.render_pass, starter_kit.current_command_buffer())?;
 
         engine.upload(0, &input)?;
         engine.prepare(starter_kit.current_command_buffer())?;
 
-        let mut app = Self {
-            input,
+        Ok(Self {
             camera,
             starter_kit,
             engine,
-        };
-
-        Ok(app)
+        })
     }
 
     fn frame(
         &mut self,
         frame: Frame,
-        core: &SharedCore,
+        _core: &SharedCore,
         platform: Platform<'_>,
     ) -> Result<PlatformReturn> {
         let cmd = self.starter_kit.begin_command_buffer(frame)?;

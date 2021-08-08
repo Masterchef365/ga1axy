@@ -15,7 +15,7 @@ pub struct Trainer {
     framebuffer: vk::Framebuffer,
     fb_image: ManagedImage,
     fb_image_view: vk::ImageView,
-    fb_depth_image: ManagedImage,
+    _fb_depth_image: ManagedImage,
     fb_depth_image_view: vk::ImageView,
     fb_download_buf: ManagedBuffer,
     fb_extent: vk::Extent2D,
@@ -198,7 +198,7 @@ impl Trainer {
             framebuffer,
             fb_image,
             fb_image_view,
-            fb_depth_image,
+            _fb_depth_image: fb_depth_image,
             fb_depth_image_view,
             fb_extent,
             fb_size_bytes,
@@ -533,11 +533,12 @@ pub fn create_render_pass(core: &Core) -> Result<vk::RenderPass> {
         .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
         .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)];
 
-    let mut create_info = vk::RenderPassCreateInfoBuilder::new()
+    let create_info = vk::RenderPassCreateInfoBuilder::new()
         .attachments(&attachments)
         .subpasses(&subpasses)
         .dependencies(&dependencies);
 
+    /*
     let views = 1;
     let view_mask = [!(!0 << views)];
     let mut multiview = erupt::vk1_1::RenderPassMultiviewCreateInfoBuilder::new()
@@ -546,7 +547,20 @@ pub fn create_render_pass(core: &Core) -> Result<vk::RenderPass> {
         .build();
 
     create_info.p_next = &mut multiview as *mut _ as _;
+    */
 
 
     Ok(unsafe { device.create_render_pass(&create_info, None, None) }.result()?)
+}
+
+impl Drop for Trainer {
+    fn drop(&mut self) {
+        unsafe {
+            self.core.device.destroy_command_pool(Some(self.command_pool), None);
+            self.core.device.destroy_framebuffer(Some(self.framebuffer), None);
+            self.core.device.destroy_render_pass(Some(self.render_pass), None);
+            self.core.device.destroy_image_view(Some(self.fb_image_view), None);
+            self.core.device.destroy_image_view(Some(self.fb_depth_image_view), None);
+        }
+    }
 }
