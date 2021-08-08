@@ -70,13 +70,13 @@ impl Trainer {
         let engine = Engine::new(core.clone(), cfg, render_pass, command_buffer)?;
 
         // Create frame download staging buffer
-        let fb_size_bytes = (cfg.output_height * cfg.output_width * 4) as u64 * std::mem::size_of::<f32>() as u64;
+        let fb_size_bytes = (cfg.output_height * cfg.output_width * 4) as u64 * std::mem::size_of::<u8>() as u64;
         let bi = vk::BufferCreateInfoBuilder::new()
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
             .usage(vk::BufferUsageFlags::TRANSFER_DST)
             .size(fb_size_bytes);
 
-        let mut fb_download_buf = ManagedBuffer::new(
+        let fb_download_buf = ManagedBuffer::new(
             core.clone(),
             bi,
             UsageFlags::DOWNLOAD,
@@ -406,12 +406,14 @@ impl Trainer {
         let mut image_data = vec![0xFFu8; self.fb_size_bytes as usize];
         self.fb_download_buf.read_bytes(0, &mut image_data)?;
 
+        // Convert RGBA to RBG
         let image_data = image_data.chunks_exact(4).map(|c| [c[0], c[1], c[2]]).flatten().collect();
 
         Ok(image_data)
     }
 }
 
+/*
 const SOME_VIEW: [f32; 4 * 4 * 2] = [
     1.0309412,
     1.1592057,
@@ -429,6 +431,42 @@ const SOME_VIEW: [f32; 4 * 4 * 2] = [
     0.0000011511867,
     17.794508,
     17.99272,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+];
+*/
+
+const SOME_VIEW: [f32; 4 * 4 * 2] = [
+    0.93182516,
+    0.60064536,
+    -0.7249493,
+    -0.7248768,
+    0.0,
+    -2.283458,
+    -0.32466766,
+    -0.3246352,
+    -1.1117011,
+    0.5034595,
+    -0.60765076,
+    -0.60758996,
+    -60.44499,
+    -43.071396,
+    81.95681,
+    82.148605,
     0.0,
     0.0,
     0.0,

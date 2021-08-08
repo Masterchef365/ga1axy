@@ -116,8 +116,8 @@ impl Engine {
 
         // Create sampler
         let create_info = vk::SamplerCreateInfoBuilder::new()
-            .mag_filter(vk::Filter::LINEAR)
-            .min_filter(vk::Filter::LINEAR)
+            .mag_filter(vk::Filter::NEAREST)
+            .min_filter(vk::Filter::NEAREST)
             .address_mode_u(vk::SamplerAddressMode::REPEAT)
             .address_mode_v(vk::SamplerAddressMode::REPEAT)
             .address_mode_w(vk::SamplerAddressMode::REPEAT)
@@ -127,7 +127,7 @@ impl Engine {
             .unnormalized_coordinates(false)
             .compare_enable(false)
             .compare_op(vk::CompareOp::ALWAYS)
-            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+            .mipmap_mode(vk::SamplerMipmapMode::NEAREST)
             .mip_lod_bias(0.)
             .min_lod(0.)
             .max_lod(0.)

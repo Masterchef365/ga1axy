@@ -24,7 +24,7 @@ pub fn demo_points(points: &mut Vec<f32>, cfg: &RenderSettings) {
 pub fn demo_images(images: &mut Vec<u8>, cfg: &RenderSettings, batch: u32) {
     let r = cfg.input_width as i32 / 2;
     for layer in 0..cfg.input_images {
-        let mut color = [0, 0, (batch * 8) as _, 0xFF];
+        let mut color = [0, 0, 0, 0xFF - batch as u8];
         color[layer as usize % 3] = 0xFF;
 
         for y in 0..cfg.input_height {
