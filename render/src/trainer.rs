@@ -26,7 +26,7 @@ pub struct Trainer {
 
 const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_UINT;
 
-const IDENTITY_MATRICES: [f32; 4 * 4 * 2] = [
+/*const IDENTITY_MATRICES: [f32; 4 * 4 * 2] = [
     1., 0., 0., 0., 
     0., 1., 0., 0., 
     0., 0., 1., 0., 
@@ -36,11 +36,13 @@ const IDENTITY_MATRICES: [f32; 4 * 4 * 2] = [
     0., 1., 0., 0., 
     0., 0., 1., 0., 
     0., 0., 0., 1., 
-];
+];*/
 
 impl Trainer {
     pub fn new(cfg: RenderSettings) -> Result<Self> {
-        let info = AppInfo::default();
+        let info = AppInfo::default()
+            .validation(true)
+            .vk_version(1, 1, 0);
         let core = build_core(info)?;
         let core = Arc::new(core);
 
@@ -64,7 +66,7 @@ impl Trainer {
         let engine = Engine::new(core.clone(), cfg, false, command_buffer)?;
 
         // Create render pass
-        let render_pass = create_render_pass(&core, false)?;
+        let render_pass = create_render_pass(&core)?;
 
         // Create frame download staging buffer
         let fb_size_bytes = (cfg.output_height * cfg.output_width * 4) as u64 * std::mem::size_of::<f32>() as u64;
@@ -141,7 +143,7 @@ impl Trainer {
             .format(COLOR_FORMAT)
             .tiling(vk::ImageTiling::OPTIMAL)
             .initial_layout(vk::ImageLayout::UNDEFINED)
-            .usage(vk::ImageUsageFlags::COLOR_ATTACHMENT)
+            .usage(vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::TRANSFER_SRC)
             .samples(vk::SampleCountFlagBits::_1)
             .sharing_mode(vk::SharingMode::EXCLUSIVE);
 
@@ -314,7 +316,29 @@ impl Trainer {
             );
 
 
-            self.engine.write_commands(self.command_buffer, 0, IDENTITY_MATRICES)?;
+            let viewports = [vk::ViewportBuilder::new()
+                .x(0.0)
+                .y(0.0)
+                .width(self.fb_extent.width as f32)
+                .height(self.fb_extent.height as f32)
+                .min_depth(0.0)
+                .max_depth(1.0)];
+
+            let scissors = [vk::Rect2DBuilder::new()
+                .offset(vk::Offset2D { x: 0, y: 0 })
+                .extent(self.fb_extent)];
+
+            self.core
+                .device
+                .cmd_set_viewport(self.command_buffer, 0, &viewports);
+
+            self.core
+                .device
+                .cmd_set_scissor(self.command_buffer, 0, &scissors);
+
+            self.engine.write_commands(self.command_buffer, 0, SOME_VIEW)?;
+
+            self.core.device.cmd_end_render_pass(self.command_buffer);
 
             // Barrier (UNDEFINED -> TRANSFER_DST_OPTIMAL)
             let barrier = vk::ImageMemoryBarrierBuilder::new()
@@ -378,11 +402,112 @@ impl Trainer {
 
         }
 
-        let mut image_data = vec![0u8; self.fb_size_bytes as usize];
+        let mut image_data = vec![0xFFu8; self.fb_size_bytes as usize];
         self.fb_download_buf.read_bytes(0, &mut image_data)?;
 
         let image_data = image_data.chunks_exact(4).map(|c| [c[0], c[1], c[2]]).flatten().collect();
 
         Ok(image_data)
     }
+}
+
+const SOME_VIEW: [f32; 4 * 4 * 2] = [
+    1.0309412,
+    1.1592057,
+    -0.51418984,
+    -0.5141384,
+    0.0,
+    -1.7644163,
+    -0.6826116,
+    -0.68254334,
+    -1.0204597,
+    1.1711124,
+    -0.51947135,
+    -0.5194194,
+    -0.00000069168965,
+    0.0000011511867,
+    17.794508,
+    17.99272,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+];
+
+pub fn create_render_pass(core: &Core) -> Result<vk::RenderPass> {
+    let device = &core.device;
+
+    // Render pass
+    let color_attachment = vk::AttachmentDescriptionBuilder::new()
+        .format(COLOR_FORMAT)
+        .samples(vk::SampleCountFlagBits::_1)
+        .load_op(vk::AttachmentLoadOp::CLEAR)
+        .store_op(vk::AttachmentStoreOp::STORE)
+        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .final_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+
+    let depth_attachment = vk::AttachmentDescriptionBuilder::new()
+        .format(DEPTH_FORMAT)
+        .samples(vk::SampleCountFlagBits::_1)
+        .load_op(vk::AttachmentLoadOp::CLEAR)
+        .store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+        .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+        .initial_layout(vk::ImageLayout::UNDEFINED)
+        .final_layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+    let attachments = [color_attachment, depth_attachment];
+
+    let color_attachment_refs = [vk::AttachmentReferenceBuilder::new()
+        .attachment(0)
+        .layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)];
+
+    let depth_attachment_ref = vk::AttachmentReferenceBuilder::new()
+        .attachment(1)
+        .layout(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        .build();
+
+    let subpasses = [vk::SubpassDescriptionBuilder::new()
+        .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
+        .color_attachments(&color_attachment_refs)
+        .depth_stencil_attachment(&depth_attachment_ref)];
+
+    let dependencies = [vk::SubpassDependencyBuilder::new()
+        .src_subpass(vk::SUBPASS_EXTERNAL)
+        .dst_subpass(0)
+        .src_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+        .src_access_mask(vk::AccessFlags::empty())
+        .dst_stage_mask(vk::PipelineStageFlags::COLOR_ATTACHMENT_OUTPUT)
+        .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)];
+
+    let mut create_info = vk::RenderPassCreateInfoBuilder::new()
+        .attachments(&attachments)
+        .subpasses(&subpasses)
+        .dependencies(&dependencies);
+
+    let views = 1;
+    let view_mask = [!(!0 << views)];
+    let mut multiview = erupt::vk1_1::RenderPassMultiviewCreateInfoBuilder::new()
+        .view_masks(&view_mask)
+        .correlation_masks(&view_mask)
+        .build();
+
+    create_info.p_next = &mut multiview as *mut _ as _;
+
+
+    Ok(unsafe { device.create_render_pass(&create_info, None, None) }.result()?)
 }

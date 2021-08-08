@@ -51,7 +51,9 @@ impl MainLoop<RenderInputs> for Visualizer {
 
         let (ret, cameras) = self.camera.get_matrices(&platform)?;
 
-        self.engine.write_commands(command_buffer, self.starter_kit.frame, cameras);
+        dbg!(&cameras);
+
+        self.engine.write_commands(command_buffer, self.starter_kit.frame, cameras)?;
 
         self.starter_kit.end_command_buffer(cmd)?;
 
