@@ -12,7 +12,8 @@ fn main() -> Result<()> {
         input_points: 128,
     };
 
-    let input = demo(&cfg);
+    //let input = demo(&cfg);
+    let input = ga1axy_render::demo_inputs::random(&cfg);
 
     visualize(input, cfg, false)
 }

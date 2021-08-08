@@ -569,7 +569,7 @@ pub fn shader(
         .blend_enable(true)
         .color_blend_op(vk::BlendOp::ADD)
         .src_color_blend_factor(vk::BlendFactor::ONE)
-        .dst_color_blend_factor(vk::BlendFactor::ONE)
+        .dst_color_blend_factor(vk::BlendFactor::SRC_ALPHA)
         .alpha_blend_op(vk::BlendOp::ADD)
         .src_alpha_blend_factor(vk::BlendFactor::ONE)
         .dst_alpha_blend_factor(vk::BlendFactor::ONE)

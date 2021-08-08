@@ -1,4 +1,5 @@
-use crate::{RenderSettings, Input};
+use crate::{Input, RenderSettings};
+use rand::Rng;
 
 pub fn demo(cfg: &RenderSettings) -> Input {
     let mut points = vec![];
@@ -7,10 +8,7 @@ pub fn demo(cfg: &RenderSettings) -> Input {
         demo_points(&mut points, cfg, sample);
         demo_images(&mut images, cfg);
     }
-    Input {
-        points,
-        images,
-    }
+    Input { points, images }
 }
 
 pub fn demo_points(points: &mut Vec<f32>, cfg: &RenderSettings, sample: u32) {
@@ -22,7 +20,7 @@ pub fn demo_points(points: &mut Vec<f32>, cfg: &RenderSettings, sample: u32) {
                 point[sample as usize % 3] = i as f32;
                 point
             })
-            .flatten()
+            .flatten(),
     );
 }
 
@@ -46,4 +44,16 @@ pub fn demo_images(images: &mut Vec<u8>, cfg: &RenderSettings) {
             }
         }
     }
+}
+
+pub fn random(cfg: &RenderSettings) -> Input {
+    let mut rng = rand::thread_rng();
+    let mut points = (0..cfg.batch_size * cfg.input_points * 4)
+        .map(|_| rng.gen_range(0.0..1.0))
+        .collect();
+    let mut images =
+        (0..cfg.batch_size * cfg.input_images * cfg.input_height * cfg.input_width * 4)
+            .map(|_| rng.gen_range(u8::MIN..u8::MAX))
+            .collect();
+    Input { points, images }
 }

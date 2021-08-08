@@ -27,19 +27,16 @@ pub struct Trainer {
     core: SharedCore,
 }
 
-const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
+fn random_arcball(rng: &mut impl Rng) -> Matrix4<f32> {
+    use std::f32::consts::{PI, FRAC_PI_2};
+    let pitch = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
+    let yaw = rng.gen_range(-PI..PI);
+    let distance = rng.gen_range(2.0..8.0);
+    let fov = PI / 3.;
+    arcball(pitch, yaw, distance, fov)
+}
 
-/*const IDENTITY_MATRICES: [f32; 4 * 4 * 2] = [
-    1., 0., 0., 0., 
-    0., 1., 0., 0., 
-    0., 0., 1., 0., 
-    0., 0., 0., 1., 
-    //
-    1., 0., 0., 0., 
-    0., 1., 0., 0., 
-    0., 0., 1., 0., 
-    0., 0., 0., 1., 
-];*/
+const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 
 impl Trainer {
     pub fn new(cfg: RenderSettings) -> Result<Self> {
@@ -419,78 +416,6 @@ fn rgba_to_rgb(input: Vec<u8>) -> Vec<u8> {
     output
 }
 
-/*
-const SOME_VIEW: [f32; 4 * 4 * 2] = [
-    1.0309412,
-    1.1592057,
-    -0.51418984,
-    -0.5141384,
-    0.0,
-    -1.7644163,
-    -0.6826116,
-    -0.68254334,
-    -1.0204597,
-    1.1711124,
-    -0.51947135,
-    -0.5194194,
-    -0.00000069168965,
-    0.0000011511867,
-    17.794508,
-    17.99272,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-];
-*/
-
-const SOME_VIEW: [f32; 4 * 4 * 2] = [
-    0.93182516,
-    0.60064536,
-    -0.7249493,
-    -0.7248768,
-    0.0,
-    -2.283458,
-    -0.32466766,
-    -0.3246352,
-    -1.1117011,
-    0.5034595,
-    -0.60765076,
-    -0.60758996,
-    -60.44499,
-    -43.071396,
-    81.95681,
-    82.148605,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-];
-
 pub fn create_render_pass(core: &Core) -> Result<vk::RenderPass> {
     let device = &core.device;
 
@@ -569,15 +494,6 @@ impl Drop for Trainer {
             self.core.device.destroy_image_view(Some(self.fb_depth_image_view), None);
         }
     }
-}
-
-fn random_arcball(rng: &mut impl Rng) -> Matrix4<f32> {
-    use std::f32::consts::{PI, FRAC_PI_2};
-    let pitch = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
-    let yaw = rng.gen_range(-PI..PI);
-    let distance = rng.gen_range(2.0..8.0);
-    let fov = PI / 3.;
-    arcball(pitch, yaw, distance, fov)
 }
 
 fn arcball(pitch: f32, yaw: f32, distance: f32, fov: f32) -> Matrix4<f32> {

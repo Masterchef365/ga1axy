@@ -15,7 +15,8 @@ fn main() -> Result<()> {
     };
 
     let mut trainer = Trainer::new(cfg)?;
-    let input = demo(&cfg);
+    let input = ga1axy_render::demo_inputs::random(&cfg);
+    //let input = demo(&cfg);
 
     let start = std::time::Instant::now();
     let output = trainer.frame(&input)?;
