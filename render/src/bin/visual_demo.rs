@@ -1,5 +1,6 @@
 use anyhow::Result;
-use ga1axy::{demo_inputs::demo, visualize, RenderSettings};
+use ga1axy::{visualize, RenderSettings};
+//use ga1axy::demo_inputs::demo;
 
 fn main() -> Result<()> {
     let cfg = RenderSettings {

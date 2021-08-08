@@ -1,7 +1,7 @@
 use anyhow::Result;
 use ga1axy::RenderSettings;
 use ga1axy::trainer::Trainer;
-use ga1axy::demo_inputs::demo;
+//use ga1axy::demo_inputs::demo;
 
 fn main() -> Result<()> {
     let cfg = RenderSettings {

@@ -82,7 +82,7 @@ pub fn images_byte_count(cfg: &RenderSettings) -> u32 {
 }
 
 #[pymodule]
-fn ga1axy(py: Python, m: &PyModule) -> PyResult<()> {
+fn ga1axy(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyTrainer>()?;
     Ok(())
 }
