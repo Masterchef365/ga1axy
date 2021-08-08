@@ -134,7 +134,7 @@ impl PyTrainer {
             self.cfg.batch_size as usize,
             self.cfg.output_height as usize,
             self.cfg.output_width as usize,
-            4,
+            3,
         ))?;
 
         Ok(images.to_owned())
