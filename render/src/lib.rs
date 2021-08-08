@@ -1,5 +1,7 @@
 pub mod demo_inputs;
 pub mod visualizer;
+mod engine;
+pub mod trainer;
 pub use visualizer::visualize;
 
 use anyhow::{ensure, Result};
