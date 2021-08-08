@@ -1,5 +1,5 @@
-use ga1axy_render::{RenderSettings, demo_inputs::demo, visualize, Input};
 use anyhow::Result;
+use ga1axy_render::{demo_inputs::demo, visualize, RenderSettings};
 
 fn main() -> Result<()> {
     let cfg = RenderSettings {
@@ -12,12 +12,7 @@ fn main() -> Result<()> {
         input_points: 128,
     };
 
-    let (points, images) = demo(&cfg);
+    let input = demo(&cfg);
 
-    let input = Input {
-        points: &points,
-        images: &images,
-    };
-
-    visualize(input, &cfg, false)
+    visualize(input, cfg, false)
 }

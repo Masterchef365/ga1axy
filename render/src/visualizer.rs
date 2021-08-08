@@ -1,6 +1,8 @@
 use watertender::prelude::*;
+use watertender::memory::UsageFlags;
 use defaults::FRAMES_IN_FLIGHT;
 use anyhow::Result;
+use crate::{Input, RenderSettings};
 
 struct App {
     rainbow_cube: ManagedMesh,
@@ -17,25 +19,158 @@ struct App {
     starter_kit: StarterKit,
 }
 
-pub fn visualize(input: crate::Input<'_>, cfg: &crate::RenderSettings, vr: bool) -> Result<()> {
-    crate::verify_input(input, cfg)?;
+const TEX_IMAGE_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
+
+type RenderInputs = (Input, RenderSettings);
+
+pub fn visualize(input: Input, cfg: RenderSettings, vr: bool) -> Result<()> {
+    crate::verify_input(&input, &cfg)?;
     let info = AppInfo::default().validation(true);
-    launch::<App, ()>(info, vr, ())
+    launch::<App, RenderInputs>(info, vr, (input, cfg))
 }
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-struct SceneData {
-    cameras: [f32; 4 * 4 * 2],
-    anim: f32,
+pub struct SceneData {
+    pub cameras: [f32; 4 * 4 * 2],
+    pub anim: f32,
 }
 
 unsafe impl bytemuck::Zeroable for SceneData {}
 unsafe impl bytemuck::Pod for SceneData {}
 
-impl MainLoop for App {
-    fn new(core: &SharedCore, mut platform: Platform<'_>, user_data: ()) -> Result<Self> {
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct QuadInstance {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub layer: f32,
+}
+
+unsafe impl bytemuck::Zeroable for QuadInstance {}
+unsafe impl bytemuck::Pod for QuadInstance {}
+
+impl QuadInstance {
+    pub fn new([x, y, z]: [f32; 3], layer: f32) -> Self {
+        Self { x, y, z, layer }
+    }
+
+    pub fn binding_description() -> vk::VertexInputBindingDescriptionBuilder<'static> {
+        vk::VertexInputBindingDescriptionBuilder::new()
+            .binding(0)
+            .stride(std::mem::size_of::<Self>() as u32)
+            .input_rate(vk::VertexInputRate::INSTANCE)
+    }
+
+    pub fn get_attribute_descriptions() -> vk::VertexInputAttributeDescriptionBuilder<'static> {
+        vk::VertexInputAttributeDescriptionBuilder::new()
+            .binding(0)
+            .location(0)
+            .format(vk::Format::R32G32B32A32_SFLOAT)
+            .offset(0)
+    }
+}
+
+impl MainLoop<RenderInputs> for App {
+    fn new(core: &SharedCore, mut platform: Platform<'_>, (input, cfg): RenderInputs) -> Result<Self> {
         let mut starter_kit = StarterKit::new(core.clone(), &mut platform)?;
+
+        // Create instance buffer
+        let instance_buffer_size = crate::points_float_count(&cfg) as usize * std::mem::size_of::<f32>();
+        let bi = vk::BufferCreateInfoBuilder::new()
+            .sharing_mode(vk::SharingMode::EXCLUSIVE)
+            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
+            .size(instance_buffer_size as _);
+
+        let mut instance_buffer = ManagedBuffer::new(
+            core.clone(),
+            bi,
+            UsageFlags::UPLOAD,
+        )?;
+
+        // Create image staging buffer
+        let bi = vk::BufferCreateInfoBuilder::new()
+            .sharing_mode(vk::SharingMode::EXCLUSIVE)
+            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
+            .size(crate::images_byte_count(&cfg) as _);
+
+        let mut image_staging_buffer = ManagedBuffer::new(
+            core.clone(),
+            bi,
+            UsageFlags::UPLOAD,
+        )?;
+
+        // Create image cube
+        let image_cube_extent = vk::Extent3DBuilder::new()
+            .width(cfg.input_width)
+            .height(cfg.input_height)
+            .depth(cfg.input_images)
+            .build();
+        let ci = vk::ImageCreateInfoBuilder::new()
+            .image_type(vk::ImageType::_3D)
+            .format(TEX_IMAGE_FORMAT)
+            .extent(image_cube_extent)
+            .mip_levels(1)
+            .array_layers(1)
+            .samples(vk::SampleCountFlagBits::_1)
+            .tiling(vk::ImageTiling::LINEAR)
+            .usage(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
+            .sharing_mode(vk::SharingMode::EXCLUSIVE)
+            .initial_layout(vk::ImageLayout::UNDEFINED);
+
+        let mut images = vec![];
+        for _ in 0..cfg.batch_size {
+            images.push(ManagedImage::new(core.clone(), ci, UsageFlags::FAST_DEVICE_ACCESS)?);
+        }
+
+        // Create image views
+        let subresource_range = vk::ImageSubresourceRangeBuilder::new()
+            .aspect_mask(vk::ImageAspectFlags::COLOR)
+            .base_mip_level(0)
+            .layer_count(1)
+            .base_array_layer(0)
+            .level_count(1)
+            .build();
+
+        let mut image_views = vec![];
+        for image in &images {
+            let create_info = vk::ImageViewCreateInfoBuilder::new()
+                .image(image.instance())
+                .view_type(vk::ImageViewType::_3D)
+                .format(TEX_IMAGE_FORMAT)
+                .subresource_range(subresource_range)
+                .build();
+
+            let image_view =
+                unsafe { core.device.create_image_view(&create_info, None, None) }.result()?;
+            image_views.push(image_view);
+        }
+
+        // Create sampler
+        let create_info = vk::SamplerCreateInfoBuilder::new()
+            .mag_filter(vk::Filter::LINEAR)
+            .min_filter(vk::Filter::LINEAR)
+            .address_mode_u(vk::SamplerAddressMode::REPEAT)
+            .address_mode_v(vk::SamplerAddressMode::REPEAT)
+            .address_mode_w(vk::SamplerAddressMode::REPEAT)
+            .anisotropy_enable(false)
+            .max_anisotropy(16.)
+            .border_color(vk::BorderColor::INT_OPAQUE_BLACK)
+            .unnormalized_coordinates(false)
+            .compare_enable(false)
+            .compare_op(vk::CompareOp::ALWAYS)
+            .mipmap_mode(vk::SamplerMipmapMode::LINEAR)
+            .mip_lod_bias(0.)
+            .min_lod(0.)
+            .max_lod(0.)
+            .build();
+
+        let sampler = unsafe { core.device.create_sampler(&create_info, None, None) }.result()?;
+
+
+        // Upload to instance buffer
+        instance_buffer.write_bytes(0, bytemuck::cast_slice(&input.points))?;
 
         // Camera
         let camera = MultiPlatformCamera::new(&mut platform);
@@ -216,7 +351,7 @@ impl MainLoop for App {
     }
 }
 
-impl SyncMainLoop for App {
+impl SyncMainLoop<RenderInputs> for App {
     fn winit_sync(&self) -> (vk::Semaphore, vk::Semaphore) {
         self.starter_kit.winit_sync()
     }
