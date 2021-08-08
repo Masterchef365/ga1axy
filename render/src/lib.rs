@@ -4,6 +4,7 @@ mod engine;
 pub mod trainer;
 pub use visualizer::visualize;
 use pyo3::prelude::*;
+use numpy::{PyReadonlyArray5, PyReadonlyArray3, PyArray4, PyArray};
 
 use anyhow::{ensure, Result};
 
@@ -89,9 +90,58 @@ fn ga1axy(py: Python, m: &PyModule) -> PyResult<()> {
 #[pyclass]
 struct PyTrainer {
     trainer: trainer::Trainer,
+    cfg: RenderSettings,
 }
 
 #[pymethods]
 impl PyTrainer {
-    //pub fn new() -> PyRe
+    #[new]
+    pub fn new(
+        batch_size: u32,
+        output_width: u32,
+        output_height: u32,
+        input_images: u32,
+        input_width: u32,
+        input_height: u32,
+        input_points: u32,
+    ) -> PyResult<Self> {
+        let cfg = RenderSettings {
+            batch_size,
+            output_width,
+            output_height,
+            input_images,
+            input_width,
+            input_height,
+            input_points,
+        };
+
+        let trainer = trainer::Trainer::new(cfg).map_err(to_py_excp)?;
+        Ok(Self {
+            cfg,
+            trainer
+        })
+    }
+
+    fn frame(&mut self, py: Python, points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>) -> PyResult<Py<PyArray4<u8>>> {
+        let input = Input {
+            points: points.as_slice()?.to_vec(),
+            images: images.as_slice()?.to_vec(),
+        };
+        let output = self.trainer.frame(&input).map_err(to_py_excp)?;
+
+        let images = PyArray::from_vec(py, output.images);
+        let images = images.reshape((
+            self.cfg.batch_size as usize,
+            self.cfg.output_height as usize,
+            self.cfg.output_width as usize,
+            4,
+        ))?;
+
+        Ok(images.to_owned())
+    }
+}
+
+
+fn to_py_excp<E: std::fmt::Display>(e: E) -> PyErr {
+    PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string())
 }
