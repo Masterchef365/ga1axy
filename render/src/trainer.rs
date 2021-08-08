@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crate::{RenderSettings, Input, Output, engine::Engine};
-use watertender::defaults::{DEPTH_FORMAT, COLOR_FORMAT};
+use watertender::defaults::DEPTH_FORMAT;
 use watertender::headless_backend::build_core;
 use watertender::prelude::*;
 use watertender::memory::UsageFlags;
@@ -16,11 +16,15 @@ pub struct Trainer {
     fb_image_view: vk::ImageView,
     fb_depth_image: ManagedImage,
     fb_depth_image_view: vk::ImageView,
+    fb_download_buf: ManagedBuffer,
     fb_extent: vk::Extent2D,
+    fb_size_bytes: u64,
 
     engine: Engine,
     core: SharedCore,
 }
+
+const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_UINT;
 
 const IDENTITY_MATRICES: [f32; 4 * 4 * 2] = [
     1., 0., 0., 0., 
@@ -63,16 +67,16 @@ impl Trainer {
         let render_pass = create_render_pass(&core, false)?;
 
         // Create frame download staging buffer
-        let fb_size_bytes = (cfg.output_height * cfg.output_width * 4) as usize * std::mem::size_of::<f32>();
+        let fb_size_bytes = (cfg.output_height * cfg.output_width * 4) as u64 * std::mem::size_of::<f32>() as u64;
         let bi = vk::BufferCreateInfoBuilder::new()
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
             .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
-            .size(fb_size_bytes as _);
+            .size(fb_size_bytes);
 
         let mut fb_download_buf = ManagedBuffer::new(
             core.clone(),
             bi,
-            UsageFlags::UPLOAD,
+            UsageFlags::DOWNLOAD,
         )?;
 
         // Output extent
@@ -194,6 +198,8 @@ impl Trainer {
             fb_depth_image,
             fb_depth_image_view,
             fb_extent,
+            fb_size_bytes,
+            fb_download_buf,
             core,
             command_buffer,
             command_pool,
@@ -248,7 +254,34 @@ impl Trainer {
                 .begin_command_buffer(self.command_buffer, &begin_info)
                 .result()?;
 
-            // TODO: Transition framebuffer to shader write
+            // Barrier (UNDEFINED -> TRANSFER_DST_OPTIMAL)
+            let image_subresource = vk::ImageSubresourceRangeBuilder::new()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .base_mip_level(0)
+                .level_count(1)
+                .base_array_layer(0)
+                .layer_count(1)
+                .build();
+
+            let barrier = vk::ImageMemoryBarrierBuilder::new()
+                .image(self.fb_image.instance())
+                .old_layout(vk::ImageLayout::UNDEFINED)
+                .new_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .src_access_mask(vk::AccessFlags::empty())
+                .dst_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
+                .subresource_range(image_subresource);
+
+            self.core.device.cmd_pipeline_barrier(
+                self.command_buffer,
+                vk::PipelineStageFlags::TOP_OF_PIPE,
+                vk::PipelineStageFlags::ALL_GRAPHICS,
+                None,
+                &[],
+                &[],
+                &[barrier],
+            );
 
             // Set render pass
             let clear_values = [
@@ -283,10 +316,51 @@ impl Trainer {
 
             self.engine.write_commands(self.command_buffer, 0, IDENTITY_MATRICES)?;
 
-            // TODO: Transition framebuffer to transfer dst
+            // Barrier (UNDEFINED -> TRANSFER_DST_OPTIMAL)
+            let barrier = vk::ImageMemoryBarrierBuilder::new()
+                .image(self.fb_image.instance())
+                .old_layout(vk::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                .new_layout(vk::ImageLayout::TRANSFER_SRC_OPTIMAL)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .src_access_mask(vk::AccessFlags::COLOR_ATTACHMENT_WRITE)
+                .dst_access_mask(vk::AccessFlags::empty())
+                .subresource_range(image_subresource);
 
-            // TODO: Copy the image to the download buffer
+            self.core.device.cmd_pipeline_barrier(
+                self.command_buffer,
+                vk::PipelineStageFlags::ALL_GRAPHICS,
+                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                None,
+                &[],
+                &[],
+                &[barrier],
+            );
 
+            // Image copy to download buffer
+            let sub_layers = vk::ImageSubresourceLayersBuilder::new()
+                .layer_count(1)
+                .base_array_layer(0)
+                .mip_level(0)
+                .aspect_mask(vk::ImageAspectFlags::COLOR);
+
+            let buffer_image_copy = vk::BufferImageCopyBuilder::new()
+                .buffer_offset(0)
+                .buffer_row_length(0)
+                .buffer_image_height(0)
+                .image_extent(vk::Extent3DBuilder::new().width(self.fb_extent.width).height(self.fb_extent.height).depth(1).build())
+                .image_offset(vk::Offset3DBuilder::new().x(0).y(0).z(0).build())
+                .image_subresource(*sub_layers);
+
+            self.core.device.cmd_copy_image_to_buffer(
+                self.command_buffer,
+                self.fb_image.instance(),
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+                self.fb_download_buf.instance(),
+                &[buffer_image_copy]
+            );
+
+            // Submit & wait
             self
                 .core
                 .device
@@ -304,6 +378,11 @@ impl Trainer {
 
         }
 
-        todo!()
+        let mut image_data = vec![0u8; self.fb_size_bytes as usize];
+        self.fb_download_buf.read_bytes(0, &mut image_data)?;
+
+        let image_data = image_data.chunks_exact(4).map(|c| [c[0], c[1], c[2]]).flatten().collect();
+
+        Ok(image_data)
     }
 }
