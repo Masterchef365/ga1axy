@@ -426,9 +426,6 @@ fn quad(size: f32) -> (Vec<Vertex>, Vec<u32>) {
     let indices = vec![
         0, 1, 2,
         0, 2, 3,
-
-        2, 1, 0,
-        3, 2, 0,
     ];
 
     (vertices, indices)
@@ -510,7 +507,14 @@ pub fn shader(
                 | vk::ColorComponentFlags::B
                 | vk::ColorComponentFlags::A,
         )
-        .blend_enable(false)];
+        .blend_enable(true)
+        .color_blend_op(vk::BlendOp::ADD)
+        .src_color_blend_factor(vk::BlendFactor::ONE)
+        .dst_color_blend_factor(vk::BlendFactor::ONE)
+        .alpha_blend_op(vk::BlendOp::ADD)
+        .src_alpha_blend_factor(vk::BlendFactor::ONE)
+        .dst_alpha_blend_factor(vk::BlendFactor::ONE)
+    ];
     let color_blending = vk::PipelineColorBlendStateCreateInfoBuilder::new()
         .logic_op_enable(false)
         .attachments(&color_blend_attachments);
@@ -529,8 +533,8 @@ pub fn shader(
     ];
 
     let depth_stencil_state = vk::PipelineDepthStencilStateCreateInfoBuilder::new()
-        .depth_test_enable(true)
-        .depth_write_enable(true)
+        .depth_test_enable(false)
+        .depth_write_enable(false)
         .depth_compare_op(vk::CompareOp::LESS)
         .depth_bounds_test_enable(false)
         .stencil_test_enable(false);

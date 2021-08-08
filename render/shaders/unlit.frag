@@ -6,5 +6,5 @@ layout(location = 0) in float layer;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    outColor = vec4(vec3(layer), 1.0);
+    outColor = vec4(vec3(layer / 100.), 0.0);
 }
