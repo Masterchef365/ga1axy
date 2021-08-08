@@ -11,6 +11,7 @@ struct App {
     pipeline: vk::Pipeline,
     pipeline_layout: vk::PipelineLayout,
     cfg: RenderSettings,
+    input: Input,
 
     descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_pool: vk::DescriptorPool,
@@ -72,6 +73,18 @@ impl QuadInstance {
             .location(2)
             .format(vk::Format::R32G32B32A32_SFLOAT)
             .offset(0)
+    }
+}
+
+impl App {
+    pub fn upload(&mut self, idx: usize) -> Result<()> {
+        let points_stride = (self.cfg.input_points * 4) as usize;
+        let points = &self.input.points[points_stride*idx..points_stride*(idx+1)];
+
+        // Upload to instance buffer
+        self.instances.write_bytes(0, &bytemuck::cast_slice(&points))?;
+
+        Ok(())
     }
 }
 
@@ -165,9 +178,6 @@ impl MainLoop<RenderInputs> for App {
 
         let sampler = unsafe { core.device.create_sampler(&create_info, None, None) }.result()?;
 
-        // Upload to instance buffer
-        instances.write_bytes(0, &bytemuck::cast_slice(&input.points)[..instance_buffer_size])?;
-
         // Camera
         let camera = MultiPlatformCamera::new(&mut platform);
 
@@ -224,7 +234,6 @@ impl MainLoop<RenderInputs> for App {
 
         let descriptor_sets =
             unsafe { core.device.allocate_descriptor_sets(&create_info) }.result()?;
-
 
         // Image info
         let image_infos = [vk::DescriptorImageInfoBuilder::new()
@@ -289,8 +298,9 @@ impl MainLoop<RenderInputs> for App {
             &indices,
         )?;
 
-        Ok(Self {
+        let mut app = Self {
             cfg,
+            input,
             instances,
             camera,
             descriptor_set_layout,
@@ -302,7 +312,11 @@ impl MainLoop<RenderInputs> for App {
             quad_mesh: rainbow_cube,
             pipeline,
             starter_kit,
-        })
+        };
+
+        app.upload(0)?;
+
+        Ok(app)
     }
 
     fn frame(
