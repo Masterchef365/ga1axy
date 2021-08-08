@@ -8,10 +8,13 @@ use std::ffi::CString;
 struct App {
     quad_mesh: ManagedMesh,
     instances: ManagedBuffer,
+    image_staging_buffer: ManagedBuffer,
+    image: ManagedImage,
     pipeline: vk::Pipeline,
     pipeline_layout: vk::PipelineLayout,
     cfg: RenderSettings,
     input: Input,
+    image_extent: vk::Extent3D,
 
     descriptor_sets: Vec<vk::DescriptorSet>,
     descriptor_pool: vk::DescriptorPool,
@@ -78,13 +81,140 @@ impl QuadInstance {
 
 impl App {
     pub fn upload(&mut self, idx: usize) -> Result<()> {
+        // Upload points
         let points_stride = (self.cfg.input_points * 4) as usize;
         let points = &self.input.points[points_stride*idx..points_stride*(idx+1)];
 
-        // Upload to instance buffer
         self.instances.write_bytes(0, &bytemuck::cast_slice(&points))?;
 
+        // Upload images
+        let image_float_stride = (self.cfg.input_images * self.cfg.input_height * self.cfg.input_width * 4) as usize;
+        let image_data = &self.input.images[image_float_stride*idx..image_float_stride*(idx+1)];
+
+        self.image_staging_buffer.write_bytes(0, &bytemuck::cast_slice(&image_data))?;
+
         Ok(())
+    }
+
+    pub fn prepare(&mut self) -> Result<()> {
+        let command_buffer = self.starter_kit.current_command_buffer();
+
+        // Record command buffer to upload to gpu_buffer
+        unsafe {
+            self.starter_kit
+                .core
+                .device
+                .reset_command_buffer(command_buffer, None)
+                .result()?;
+            let begin_info = vk::CommandBufferBeginInfoBuilder::new();
+            self.starter_kit
+                .core
+                .device
+                .begin_command_buffer(command_buffer, &begin_info)
+                .result()?;
+
+
+            // Barrier (UNDEFINED -> TRANSFER_DST_OPTIMAL)
+            let image_subresource = vk::ImageSubresourceRangeBuilder::new()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .base_mip_level(0)
+                .level_count(1)
+                .base_array_layer(0)
+                .layer_count(1)
+                .build();
+
+            let barrier = vk::ImageMemoryBarrierBuilder::new()
+                .image(self.image.instance())
+                .old_layout(vk::ImageLayout::UNDEFINED)
+                .new_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .src_access_mask(vk::AccessFlags::empty())
+                .dst_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                .subresource_range(image_subresource);
+
+            self.starter_kit.core.device.cmd_pipeline_barrier(
+                command_buffer,
+                vk::PipelineStageFlags::TOP_OF_PIPE,
+                vk::PipelineStageFlags::TRANSFER,
+                None,
+                &[],
+                &[],
+                &[barrier],
+            );
+
+            // Image copy
+            let sub_layers = vk::ImageSubresourceLayersBuilder::new()
+                .layer_count(1)
+                .base_array_layer(0)
+                .mip_level(0)
+                .aspect_mask(vk::ImageAspectFlags::COLOR);
+
+            let buffer_image_copy = vk::BufferImageCopyBuilder::new()
+                .buffer_offset(0)
+                .buffer_row_length(0)
+                .buffer_image_height(0)
+                .image_extent(self.image_extent)
+                .image_offset(vk::Offset3DBuilder::new().x(0).y(0).z(0).build())
+                .image_subresource(*sub_layers);
+
+            self.starter_kit.core.device.cmd_copy_buffer_to_image(
+                command_buffer,
+                self.image_staging_buffer.instance(),
+                self.image.instance(),
+                vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[buffer_image_copy]
+            );
+
+            // Barrier (TRANSFER_DST_OPTIMAL -> SHADER_READ_ONLY_OPTIMAL)
+            let image_subresource = vk::ImageSubresourceRangeBuilder::new()
+                .aspect_mask(vk::ImageAspectFlags::COLOR)
+                .base_mip_level(0)
+                .level_count(1)
+                .base_array_layer(0)
+                .layer_count(1)
+                .build();
+
+            let barrier = vk::ImageMemoryBarrierBuilder::new()
+                .image(self.image.instance())
+                .old_layout(vk::ImageLayout::TRANSFER_DST_OPTIMAL)
+                .new_layout(vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
+                .src_access_mask(vk::AccessFlags::empty())
+                .dst_access_mask(vk::AccessFlags::empty())
+                .subresource_range(image_subresource);
+
+            self.starter_kit.core.device.cmd_pipeline_barrier(
+                command_buffer,
+                vk::PipelineStageFlags::TRANSFER,
+                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
+                None,
+                &[],
+                &[],
+                &[barrier],
+            );
+
+
+            self.starter_kit
+                .core
+                .device
+                .end_command_buffer(command_buffer)
+                .result()?;
+            let command_buffers = [command_buffer];
+            let submit_info = vk::SubmitInfoBuilder::new().command_buffers(&command_buffers);
+            self.starter_kit
+                .core
+                .device
+                .queue_submit(self.starter_kit.core.queue, &[submit_info], None)
+                .result()?;
+            self.starter_kit
+                .core.device.queue_wait_idle(self.starter_kit.core.queue).result()?;
+        }
+
+        Ok(())
+
+
     }
 }
 
@@ -109,7 +239,7 @@ impl MainLoop<RenderInputs> for App {
         let image_buffer_size = cfg.input_images * cfg.input_height * cfg.input_width * 4;
         let bi = vk::BufferCreateInfoBuilder::new()
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
-            .usage(vk::BufferUsageFlags::VERTEX_BUFFER)
+            .usage(vk::BufferUsageFlags::TRANSFER_SRC)
             .size(image_buffer_size as _);
 
         let mut image_staging_buffer = ManagedBuffer::new(
@@ -119,7 +249,7 @@ impl MainLoop<RenderInputs> for App {
         )?;
 
         // Create image cube
-        let image_cube_extent = vk::Extent3DBuilder::new()
+        let image_extent = vk::Extent3DBuilder::new()
             .width(cfg.input_width)
             .height(cfg.input_height)
             .depth(cfg.input_images)
@@ -127,7 +257,7 @@ impl MainLoop<RenderInputs> for App {
         let ci = vk::ImageCreateInfoBuilder::new()
             .image_type(vk::ImageType::_3D)
             .format(TEX_IMAGE_FORMAT)
-            .extent(image_cube_extent)
+            .extent(image_extent)
             .mip_levels(1)
             .array_layers(1)
             .samples(vk::SampleCountFlagBits::_1)
@@ -299,7 +429,10 @@ impl MainLoop<RenderInputs> for App {
         )?;
 
         let mut app = Self {
+            image_extent,
+            image,
             cfg,
+            image_staging_buffer,
             input,
             instances,
             camera,
@@ -315,6 +448,7 @@ impl MainLoop<RenderInputs> for App {
         };
 
         app.upload(0)?;
+        app.prepare()?;
 
         Ok(app)
     }
