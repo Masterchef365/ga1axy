@@ -42,7 +42,7 @@ const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
 impl Trainer {
     pub fn new(cfg: RenderSettings) -> Result<Self> {
         let info = AppInfo::default()
-            .validation(true)
+            .validation(cfg!(debug_assertions))
             .vk_version(1, 1, 0);
         let core = build_core(info)?;
         let core = Arc::new(core);
@@ -211,18 +211,6 @@ impl Trainer {
     }
 
     pub fn frame(&mut self, input: &Input) -> Result<Output> {
-        /*
-        let point_chunk = cfg.input_points * 4;
-        let image_chunk = cfg.input_images * cfg.input_height * cfg.input_width * 4;
-
-        for (points, images) in 
-            input.points.chunks_exact(point_chunk as _)
-            .zip(input.images.chunks_exact(image_chunk as _)) 
-        {
-            output.extend(self.single_frame(points, images)?);
-        }
-        */
-
         let mut output = vec![];
         let cfg = self.engine.cfg();
 
@@ -407,10 +395,21 @@ impl Trainer {
         self.fb_download_buf.read_bytes(0, &mut image_data)?;
 
         // Convert RGBA to RBG
-        let image_data = image_data.chunks_exact(4).map(|c| [c[0], c[1], c[2]]).flatten().collect();
+        let image_data = rgba_to_rgb(image_data);
 
         Ok(image_data)
     }
+}
+
+fn rgba_to_rgb(input: Vec<u8>) -> Vec<u8> {
+    assert!(input.len() % 4 == 0);
+    let mut output = Vec::with_capacity((input.len() * 3) / 4);
+    for pixel in input.chunks_exact(4) {
+        output.push(pixel[0]);
+        output.push(pixel[1]);
+        output.push(pixel[2]);
+    }
+    output
 }
 
 /*
