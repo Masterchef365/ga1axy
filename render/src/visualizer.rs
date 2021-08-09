@@ -12,7 +12,7 @@ type RenderInputs = (Input, RenderSettings);
 
 pub fn visualize(input: Input, cfg: RenderSettings, vr: bool) -> Result<()> {
     crate::verify_input(&input, &cfg)?;
-    let info = AppInfo::default().validation(true);
+    let info = AppInfo::default().validation(cfg!(debug_assertions));
     launch::<Visualizer, RenderInputs>(info, vr, (input, cfg))
 }
 

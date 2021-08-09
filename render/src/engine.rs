@@ -87,7 +87,7 @@ impl Engine {
             .mip_levels(1)
             .array_layers(1)
             .samples(vk::SampleCountFlagBits::_1)
-            .tiling(vk::ImageTiling::LINEAR)
+            .tiling(vk::ImageTiling::OPTIMAL)
             .usage(vk::ImageUsageFlags::TRANSFER_DST | vk::ImageUsageFlags::SAMPLED)
             .sharing_mode(vk::SharingMode::EXCLUSIVE)
             .initial_layout(vk::ImageLayout::UNDEFINED);
