@@ -23,8 +23,7 @@ fn main() -> Result<()> {
     let end = start.elapsed();
     println!("Frame took {}s", end.as_secs_f32());
 
-    let frame_len = cfg.output_width * cfg.output_height * 3;
-    for (idx, frame) in output.images.chunks_exact(frame_len as _).enumerate() {
+    for (idx, frame) in output.image_arrays(&cfg).enumerate() {
         let path = format!("{}.ppm", idx);
         save_image(path, &frame, cfg.output_width as _)?;
     }
@@ -33,7 +32,7 @@ fn main() -> Result<()> {
 }
 
 use std::fs::File;
-use std::io::Write;
+use std::io::{Write, BufWriter};
 use std::path::Path;
 
 pub fn write_ppm<W: Write>(writer: &mut W, image: &[u8], width: usize) -> Result<()> {
@@ -47,7 +46,7 @@ pub fn write_ppm<W: Write>(writer: &mut W, image: &[u8], width: usize) -> Result
 }
 
 pub fn save_image<P: AsRef<Path>>(path: P, image: &[u8], width: usize) -> Result<()> {
-    let mut file = File::create(path)?;
+    let mut file = BufWriter::new(File::create(path)?);
     write_ppm(&mut file, image, width)?;
     Ok(())
 }

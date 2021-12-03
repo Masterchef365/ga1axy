@@ -44,6 +44,14 @@ pub struct Output {
     pub images: Vec<u8>,
 }
 
+impl Output {
+    /// Returns array slices corresponding to the images in this output
+    pub fn image_arrays(&self, cfg: &RenderSettings) -> impl Iterator<Item=&[u8]> {
+        let frame_len = cfg.output_width * cfg.output_height * 3;
+        self.images.chunks_exact(frame_len as _)
+    }
+}
+
 impl Render {
     pub fn new(cfg: RenderSettings) -> Result<Self> {
         Ok(Self { cfg })
