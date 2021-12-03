@@ -12,6 +12,7 @@ fn main() -> Result<()> {
         input_height: 64,
         input_points: 1280,
         background_color: [0.; 4],
+        enable_depth: true,
         scale: 0.05,
     };
 

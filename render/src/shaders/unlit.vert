@@ -5,6 +5,7 @@
 // Camera UBO
 layout(set = 0, binding = 0) uniform Animation {
     mat4 camera[2];
+    float aspect;
 };
 
 // From vertex buffer
@@ -19,6 +20,8 @@ layout(location = 0) out vec3 frag_inputs;
 
 void main() {
     vec4 screen_pos = camera[gl_ViewIndex] * vec4(instance.xyz, 1.0);
-    gl_Position = screen_pos + vec4(vert_pos, 0.);
+    vec3 vert = vert_pos;
+    vert.x *= aspect;
+    gl_Position = screen_pos + vec4(vert, 0.);
     frag_inputs = vec3(vert_color.xy, instance.w);
 }

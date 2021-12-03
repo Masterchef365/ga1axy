@@ -1,6 +1,6 @@
 use watertender::prelude::*;
 use anyhow::Result;
-use crate::{Input, RenderSettings, engine::Engine};
+use crate::{Input, RenderSettings, engine::{Engine, SceneData}};
 
 struct Visualizer {
     engine: Engine,
@@ -46,7 +46,15 @@ impl MainLoop<RenderInputs> for Visualizer {
 
         let (ret, cameras) = self.camera.get_matrices(&platform)?;
 
-        self.engine.write_commands(command_buffer, self.starter_kit.frame, cameras)?;
+        let dims = self.starter_kit.framebuffer.extent();
+        let aspect = dims.height as f32 / dims.width as f32;
+
+        let scene_data = SceneData {
+            cameras,
+            aspect
+        };
+
+        self.engine.write_commands(command_buffer, self.starter_kit.frame, scene_data)?;
 
         self.starter_kit.end_command_buffer(cmd)?;
 

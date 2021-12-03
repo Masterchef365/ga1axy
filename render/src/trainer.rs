@@ -1,4 +1,5 @@
 use anyhow::Result;
+use crate::engine::SceneData;
 use crate::{RenderSettings, Input, Output, engine::Engine};
 use watertender::defaults::DEPTH_FORMAT;
 use watertender::headless_backend::build_core;
@@ -220,10 +221,16 @@ impl Trainer {
         self.engine.prepare(self.command_buffer)?;
 
         const MATRIX_SIZE: usize = 4 * 4;
-        let mut camera_data = [0.; MATRIX_SIZE * 2];
+        let mut cameras = [0.; MATRIX_SIZE * 2];
         let camera_data_ptr = &input.cameras[MATRIX_SIZE * idx..][..MATRIX_SIZE];
 
-        camera_data[..MATRIX_SIZE].copy_from_slice(camera_data_ptr);
+        cameras[..MATRIX_SIZE].copy_from_slice(camera_data_ptr);
+
+        let aspect = self.engine.cfg().output_height as f32 / self.engine.cfg().output_width as f32;
+        let scene_data = SceneData {
+            cameras,
+            aspect,
+        };
 
         // Record command buffer to upload to gpu_buffer
         unsafe {
@@ -319,7 +326,7 @@ impl Trainer {
                 .device
                 .cmd_set_scissor(self.command_buffer, 0, &scissors);
 
-            self.engine.write_commands(self.command_buffer, 0, camera_data)?;
+            self.engine.write_commands(self.command_buffer, 0, scene_data)?;
 
             self.core.device.cmd_end_render_pass(self.command_buffer);
 

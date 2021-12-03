@@ -25,6 +25,7 @@ pub struct Engine {
 #[derive(Copy, Clone, Debug)]
 pub struct SceneData {
     pub cameras: [f32; 4 * 4 * 2],
+    pub aspect: f32,
 }
 
 #[repr(C)]
@@ -270,13 +271,8 @@ impl Engine {
         })
     }
 
-    pub fn write_commands(&mut self, command_buffer: vk::CommandBuffer, frame: usize, cameras: [f32; 4 * 4 * 2]) -> Result<()> {
-        self.scene_ubo.upload(
-            frame,
-            &SceneData {
-                cameras,
-            },
-        )?;
+    pub fn write_commands(&mut self, command_buffer: vk::CommandBuffer, frame: usize, scene_data: SceneData) -> Result<()> {
+        self.scene_ubo.upload(frame, &scene_data)?;
 
         unsafe {
             self.core.device.cmd_bind_descriptor_sets(
