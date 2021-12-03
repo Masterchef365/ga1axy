@@ -6,8 +6,8 @@ use crate::{RenderSettings, Output};
 
 pub fn write_output_as_ppm(path: impl AsRef<Path>, prefix: &str, data: &Output, cfg: &RenderSettings) -> Result<()> {
     for (idx, frame) in data.image_arrays(cfg).enumerate() {
-        let path = format!("{}{}.ppm", prefix, idx);
-        save_image(path, &frame, cfg.output_width as _)?;
+        let name = format!("{}{}.ppm", prefix, idx);
+        save_image(path.as_ref().join(name), &frame, cfg.output_width as _)?;
     }
     Ok(())
 }

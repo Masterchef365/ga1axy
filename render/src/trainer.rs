@@ -219,7 +219,6 @@ impl Trainer {
         self.engine.upload(idx, input)?;
         self.engine.prepare(self.command_buffer)?;
 
-        let mut rng = rand::thread_rng();
         const MATRIX_SIZE: usize = 4 * 4;
         let mut camera_data = [0.; MATRIX_SIZE * 2];
         let camera_data_ptr = &input.cameras[MATRIX_SIZE * idx..][..MATRIX_SIZE];

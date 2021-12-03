@@ -64,7 +64,7 @@ pub fn random(cfg: &RenderSettings) -> Input {
 
 pub fn random_camera_data(rng: &mut impl Rng, cfg: &RenderSettings) -> Vec<f32> {
     let mut camera_data = vec![];
-    for sample in 0..cfg.batch_size {
+    for _ in 0..cfg.batch_size {
         camera_data.extend(&random_arcball(rng))
     }
     camera_data

@@ -22,9 +22,13 @@ fn main() -> Result<()> {
     //let input = demo(&cfg);
 
     let start = std::time::Instant::now();
+
     let output = trainer.frame(&input)?;
+
     let end = start.elapsed();
     println!("Frame took {}s", end.as_secs_f32());
+
+    write_output_as_ppm("", "", &output, &cfg)?;
 
     Ok(())
 }
