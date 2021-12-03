@@ -5,6 +5,7 @@ pub mod trainer;
 pub use visualizer::visualize;
 use pyo3::prelude::*;
 use numpy::{PyReadonlyArray5, PyReadonlyArray3, PyArray4, PyArray};
+pub mod ppm;
 
 use anyhow::{ensure, Result};
 

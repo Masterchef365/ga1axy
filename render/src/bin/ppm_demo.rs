@@ -1,6 +1,7 @@
 use anyhow::Result;
 use ga1axy::RenderSettings;
 use ga1axy::trainer::Trainer;
+use ga1axy::ppm::write_output_as_ppm;
 //use ga1axy::demo_inputs::demo;
 
 fn main() -> Result<()> {
@@ -13,6 +14,7 @@ fn main() -> Result<()> {
         input_height: 64,
         input_points: 128,
         background_color: [0.; 4],
+        enable_depth: true,
     };
 
     let mut trainer = Trainer::new(cfg)?;
@@ -24,30 +26,5 @@ fn main() -> Result<()> {
     let end = start.elapsed();
     println!("Frame took {}s", end.as_secs_f32());
 
-    for (idx, frame) in output.image_arrays(&cfg).enumerate() {
-        let path = format!("{}.ppm", idx);
-        save_image(path, &frame, cfg.output_width as _)?;
-    }
-
-    Ok(())
-}
-
-use std::fs::File;
-use std::io::{Write, BufWriter};
-use std::path::Path;
-
-pub fn write_ppm<W: Write>(writer: &mut W, image: &[u8], width: usize) -> Result<()> {
-    let stride = width * 3;
-    let height = image.len() / stride;
-    debug_assert_eq!(image.len() % stride, 0);
-    debug_assert_eq!(image.len() % 3, 0);
-    writer.write(format!("P6\n{} {}\n255\n", width, height).as_bytes())?;
-    writer.write(image)?;
-    Ok(())
-}
-
-pub fn save_image<P: AsRef<Path>>(path: P, image: &[u8], width: usize) -> Result<()> {
-    let mut file = BufWriter::new(File::create(path)?);
-    write_ppm(&mut file, image, width)?;
     Ok(())
 }
