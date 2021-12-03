@@ -15,6 +15,7 @@ fn main() -> Result<()> {
         input_points: 128,
         background_color: [0.; 4],
         enable_depth: true,
+        scale: 0.05,
     };
 
     let mut trainer = Trainer::new(cfg)?;

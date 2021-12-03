@@ -33,6 +33,8 @@ pub struct RenderSettings {
     pub background_color: [f32; 4],
     /// Enable depth test
     pub enable_depth: bool,
+    /// Texture scale
+    pub scale: f32,
 }
 
 #[derive(Clone)]
@@ -133,6 +135,7 @@ impl PyTrainer {
             input_points,
             background_color,
             enable_depth,
+            scale: 0.25,
         };
 
         let trainer = trainer::Trainer::new(cfg).map_err(to_py_excp)?;
@@ -194,6 +197,7 @@ pub fn visualize_inputs(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<
         output_height: 256,
         background_color,
         enable_depth: true,
+        scale: 0.25,
     };
 
     Ok(visualize(input, cfg, false).map_err(to_py_excp)?)

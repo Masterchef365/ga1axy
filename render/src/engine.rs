@@ -244,7 +244,7 @@ impl Engine {
         )?;
 
         // Mesh uploads
-        let (vertices, indices) = quad(0.25);
+        let (vertices, indices) = quad(cfg.scale);
         let quad_mesh = upload_mesh(
             &mut staging_buffer,
             command_buffer,

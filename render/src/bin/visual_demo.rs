@@ -10,8 +10,9 @@ fn main() -> Result<()> {
         input_images: 10,
         input_width: 64,
         input_height: 64,
-        input_points: 128,
+        input_points: 1280,
         background_color: [0.; 4],
+        scale: 0.05,
     };
 
     //let input = demo(&cfg);
