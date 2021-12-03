@@ -240,6 +240,7 @@ impl Engine {
             vk::PrimitiveTopology::TRIANGLE_LIST,
             render_pass,
             pipeline_layout,
+            cfg.enable_depth,
         )?;
 
         // Mesh uploads
@@ -497,6 +498,7 @@ pub fn shader(
     primitive: vk::PrimitiveTopology,
     render_pass: vk::RenderPass,
     pipeline_layout: vk::PipelineLayout,
+    enable_depth: bool,
 ) -> Result<vk::Pipeline> {
     // Create shader modules
     let vert_decoded = erupt::utils::decode_spv(vertex_src)?;
@@ -592,8 +594,8 @@ pub fn shader(
     ];
 
     let depth_stencil_state = vk::PipelineDepthStencilStateCreateInfoBuilder::new()
-        .depth_test_enable(false)
-        .depth_write_enable(false)
+        .depth_test_enable(enable_depth)
+        .depth_write_enable(enable_depth)
         .depth_compare_op(vk::CompareOp::LESS)
         .depth_bounds_test_enable(false)
         .stencil_test_enable(false);

@@ -62,7 +62,7 @@ pub fn random(cfg: &RenderSettings) -> Input {
     Input { points, images, cameras }
 }
 
-fn random_camera_data(rng: &mut impl Rng, cfg: &RenderSettings) -> Vec<f32> {
+pub fn random_camera_data(rng: &mut impl Rng, cfg: &RenderSettings) -> Vec<f32> {
     let mut camera_data = vec![];
     for sample in 0..cfg.batch_size {
         camera_data.extend(&random_arcball(rng))
@@ -70,7 +70,7 @@ fn random_camera_data(rng: &mut impl Rng, cfg: &RenderSettings) -> Vec<f32> {
     camera_data
 }
 
-fn random_arcball(rng: &mut impl Rng) -> Matrix4<f32> {
+pub fn random_arcball(rng: &mut impl Rng) -> Matrix4<f32> {
     use std::f32::consts::{PI, FRAC_PI_2};
     let pitch = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
     let yaw = rng.gen_range(-PI..PI);
@@ -79,7 +79,7 @@ fn random_arcball(rng: &mut impl Rng) -> Matrix4<f32> {
     arcball(pitch, yaw, distance, fov)
 }
 
-fn arcball(pitch: f32, yaw: f32, distance: f32, fov: f32) -> Matrix4<f32> {
+pub fn arcball(pitch: f32, yaw: f32, distance: f32, fov: f32) -> Matrix4<f32> {
     let eye = Point3::new(
         yaw.cos() * pitch.cos() * distance,
         pitch.sin() * distance,

@@ -30,6 +30,8 @@ pub struct RenderSettings {
     pub input_points: u32,
     /// Background color
     pub background_color: [f32; 4],
+    /// Enable depth test
+    pub enable_depth: bool,
 }
 
 #[derive(Clone)]
@@ -118,6 +120,7 @@ impl PyTrainer {
         input_height: u32,
         input_points: u32,
         background_color: [f32; 4],
+        enable_depth: bool,
     ) -> PyResult<Self> {
         let cfg = RenderSettings {
             batch_size,
@@ -128,6 +131,7 @@ impl PyTrainer {
             input_height,
             input_points,
             background_color,
+            enable_depth,
         };
 
         let trainer = trainer::Trainer::new(cfg).map_err(to_py_excp)?;
@@ -188,6 +192,7 @@ pub fn visualize_inputs(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<
         output_width: 256,
         output_height: 256,
         background_color,
+        enable_depth: true,
     };
 
     Ok(visualize(input, cfg, false).map_err(to_py_excp)?)

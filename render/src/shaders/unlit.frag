@@ -7,4 +7,7 @@ layout(location = 0) out vec4 out_color;
 
 void main() {
     out_color = texture(tex, uvw);
+    if (out_color.a == 1.) {
+        discard;
+    }
 }
