@@ -235,8 +235,8 @@ impl Engine {
         // Pipeline
         let pipeline = shader(
             &core,
-            &std::fs::read("shaders/unlit.vert.spv")?,
-            &std::fs::read("shaders/unlit.frag.spv")?,
+            include_bytes!("shaders/unlit.vert.spv"),
+            include_bytes!("shaders/unlit.frag.spv"),
             vk::PrimitiveTopology::TRIANGLE_LIST,
             render_pass,
             pipeline_layout,
