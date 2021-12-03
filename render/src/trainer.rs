@@ -6,8 +6,6 @@ use watertender::memory::{UsageFlags, ManagedImage, ManagedBuffer};
 use watertender::app_info::AppInfo;
 use watertender::{vk, SharedCore, Core};
 use std::sync::Arc;
-use nalgebra::{Matrix4, Point3, Vector3};
-use rand::Rng;
 
 pub struct Trainer {
     command_buffer: vk::CommandBuffer,
@@ -25,15 +23,6 @@ pub struct Trainer {
 
     engine: Engine,
     core: SharedCore,
-}
-
-fn random_arcball(rng: &mut impl Rng) -> Matrix4<f32> {
-    use std::f32::consts::{PI, FRAC_PI_2};
-    let pitch = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
-    let yaw = rng.gen_range(-PI..PI);
-    let distance = rng.gen_range(2.0..8.0);
-    let fov = PI / 3.;
-    arcball(pitch, yaw, distance, fov)
 }
 
 const COLOR_FORMAT: vk::Format = vk::Format::R8G8B8A8_SRGB;
@@ -231,7 +220,11 @@ impl Trainer {
         self.engine.prepare(self.command_buffer)?;
 
         let mut rng = rand::thread_rng();
-        let camera = random_arcball(&mut rng);
+        const MATRIX_SIZE: usize = 4 * 4;
+        let mut camera_data = [0.; MATRIX_SIZE * 2];
+        let camera_data_ptr = &input.cameras[MATRIX_SIZE * idx..][..MATRIX_SIZE];
+
+        camera_data[..MATRIX_SIZE].copy_from_slice(camera_data_ptr);
 
         // Record command buffer to upload to gpu_buffer
         unsafe {
@@ -327,8 +320,6 @@ impl Trainer {
                 .device
                 .cmd_set_scissor(self.command_buffer, 0, &scissors);
 
-            let mut camera_data = [0.; 4 * 4 * 2];
-            camera_data[..4*4].copy_from_slice(camera.as_slice());
             self.engine.write_commands(self.command_buffer, 0, camera_data)?;
 
             self.core.device.cmd_end_render_pass(self.command_buffer);
@@ -494,21 +485,4 @@ impl Drop for Trainer {
             self.core.device.destroy_image_view(Some(self.fb_depth_image_view), None);
         }
     }
-}
-
-fn arcball(pitch: f32, yaw: f32, distance: f32, fov: f32) -> Matrix4<f32> {
-    let eye = Point3::new(
-        yaw.cos() * pitch.cos() * distance,
-        pitch.sin() * distance,
-        yaw.sin() * pitch.cos() * distance,
-    );
-
-    let view = Matrix4::look_at_rh(&eye, &Point3::origin(), &Vector3::y());
-    let projection = Matrix4::new_perspective(
-        1.,
-        fov,
-        0.001,
-        1000.,
-    );
-    projection * view
 }

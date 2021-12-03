@@ -1,4 +1,5 @@
 use crate::{Input, RenderSettings};
+use nalgebra::{Matrix4, Point3, Vector3};
 use rand::Rng;
 
 pub fn demo(cfg: &RenderSettings) -> Input {
@@ -8,7 +9,9 @@ pub fn demo(cfg: &RenderSettings) -> Input {
         demo_points(&mut points, cfg, sample);
         demo_images(&mut images, cfg);
     }
-    Input { points, images }
+    let mut rng = rand::thread_rng();
+    let cameras = random_camera_data(&mut rng, cfg);
+    Input { points, images, cameras }
 }
 
 pub fn demo_points(points: &mut Vec<f32>, cfg: &RenderSettings, sample: u32) {
@@ -55,5 +58,40 @@ pub fn random(cfg: &RenderSettings) -> Input {
         (0..cfg.batch_size * cfg.input_images * cfg.input_height * cfg.input_width * 4)
             .map(|_| rng.gen_range(u8::MIN..u8::MAX))
             .collect();
-    Input { points, images }
+    let cameras = random_camera_data(&mut rng, cfg);
+    Input { points, images, cameras }
+}
+
+fn random_camera_data(rng: &mut impl Rng, cfg: &RenderSettings) -> Vec<f32> {
+    let mut camera_data = vec![];
+    for sample in 0..cfg.batch_size {
+        camera_data.extend(&random_arcball(rng))
+    }
+    camera_data
+}
+
+fn random_arcball(rng: &mut impl Rng) -> Matrix4<f32> {
+    use std::f32::consts::{PI, FRAC_PI_2};
+    let pitch = rng.gen_range(-FRAC_PI_2..FRAC_PI_2);
+    let yaw = rng.gen_range(-PI..PI);
+    let distance = rng.gen_range(2.0..8.0);
+    let fov = PI / 3.;
+    arcball(pitch, yaw, distance, fov)
+}
+
+fn arcball(pitch: f32, yaw: f32, distance: f32, fov: f32) -> Matrix4<f32> {
+    let eye = Point3::new(
+        yaw.cos() * pitch.cos() * distance,
+        pitch.sin() * distance,
+        yaw.sin() * pitch.cos() * distance,
+    );
+
+    let view = Matrix4::look_at_rh(&eye, &Point3::origin(), &Vector3::y());
+    let projection = Matrix4::new_perspective(
+        1.,
+        fov,
+        0.001,
+        1000.,
+    );
+    projection * view
 }

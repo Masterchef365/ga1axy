@@ -39,6 +39,8 @@ pub struct Input {
     pub points: Vec<f32>,
     /// Images data, logically organized (batch_size, input_images, input_height, input_width, 4), RGBA
     pub images: Vec<u8>,
+    /// Camera matrices, organized into (batch_size, columns, rows)
+    pub cameras: Vec<f32>,
 }
 
 pub struct Output {
@@ -135,8 +137,8 @@ impl PyTrainer {
         })
     }
 
-    fn frame(&mut self, py: Python, points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>) -> PyResult<Py<PyArray4<u8>>> {
-        let input = construct_input(points, images)?;
+    fn frame(&mut self, py: Python, points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>, cameras: PyReadonlyArray3<f32>) -> PyResult<Py<PyArray4<u8>>> {
+        let input = construct_input(points, images, cameras)?;
         let output = self.trainer.frame(&input).map_err(to_py_excp)?;
 
         let images = PyArray::from_vec(py, output.images);
@@ -151,15 +153,16 @@ impl PyTrainer {
     }
 }
 
-fn construct_input(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>) -> PyResult<Input> {
+fn construct_input(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>, cameras: PyReadonlyArray3<f32>) -> PyResult<Input> {
     Ok(Input {
         points: points.as_slice()?.to_vec(),
         images: images.as_slice()?.to_vec(),
+        cameras: cameras.as_slice()?.to_vec(),
     })
 }
 
 #[pyfunction]
-pub fn visualize_inputs(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>, background_color: [f32; 4]) -> PyResult<()> {
+pub fn visualize_inputs(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>, cameras: PyReadonlyArray3<f32>, background_color: [f32; 4]) -> PyResult<()> {
     let batch_size = points.shape()[0] as u32;
     let input_points = points.shape()[1] as u32;
     let point_channels = points.shape()[2] as u32;
@@ -170,7 +173,7 @@ pub fn visualize_inputs(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<
     let input_width = images.shape()[3] as u32;
     let img_channels = images.shape()[4] as u32;
 
-    let input = construct_input(points, images)?;
+    let input = construct_input(points, images, cameras)?;
 
     assert_eq!(batch_size, batch_size_img);
     assert_eq!(point_channels, 4);
