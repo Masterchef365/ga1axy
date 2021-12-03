@@ -11,6 +11,7 @@ fn main() -> Result<()> {
         input_width: 64,
         input_height: 64,
         input_points: 128,
+        background_color: [0.; 4],
     };
 
     //let input = demo(&cfg);

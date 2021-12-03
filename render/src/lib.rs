@@ -28,6 +28,8 @@ pub struct RenderSettings {
     pub input_height: u32,
     /// Number of input points
     pub input_points: u32,
+    /// Background color
+    pub background_color: [f32; 4],
 }
 
 #[derive(Clone)]
@@ -113,6 +115,7 @@ impl PyTrainer {
         input_width: u32,
         input_height: u32,
         input_points: u32,
+        background_color: [f32; 4],
     ) -> PyResult<Self> {
         let cfg = RenderSettings {
             batch_size,
@@ -122,6 +125,7 @@ impl PyTrainer {
             input_width,
             input_height,
             input_points,
+            background_color,
         };
 
         let trainer = trainer::Trainer::new(cfg).map_err(to_py_excp)?;
@@ -155,7 +159,7 @@ fn construct_input(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>) 
 }
 
 #[pyfunction]
-pub fn visualize_inputs(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>) -> PyResult<()> {
+pub fn visualize_inputs(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<u8>, background_color: [f32; 4]) -> PyResult<()> {
     let batch_size = points.shape()[0] as u32;
     let input_points = points.shape()[1] as u32;
     let point_channels = points.shape()[2] as u32;
@@ -180,6 +184,7 @@ pub fn visualize_inputs(points: PyReadonlyArray3<f32>, images: PyReadonlyArray5<
         input_points,
         output_width: 256,
         output_height: 256,
+        background_color,
     };
 
     Ok(visualize(input, cfg, false).map_err(to_py_excp)?)

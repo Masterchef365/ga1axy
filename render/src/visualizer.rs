@@ -20,6 +20,7 @@ pub fn visualize(input: Input, cfg: RenderSettings, vr: bool) -> Result<()> {
 impl MainLoop<RenderInputs> for Visualizer {
     fn new(core: &SharedCore, mut platform: Platform<'_>, (input, cfg): RenderInputs) -> Result<Self> {
         let starter_kit = StarterKit::new(core.clone(), &mut platform)?;
+
         let camera = MultiPlatformCamera::new(&mut platform);
         let mut engine = Engine::new(core.clone(), cfg, starter_kit.render_pass, starter_kit.current_command_buffer())?;
 
@@ -41,6 +42,7 @@ impl MainLoop<RenderInputs> for Visualizer {
     ) -> Result<PlatformReturn> {
         let cmd = self.starter_kit.begin_command_buffer(frame)?;
         let command_buffer = cmd.command_buffer;
+        self.starter_kit.begin_render_pass(command_buffer, frame, self.engine.cfg().background_color);
 
         let (ret, cameras) = self.camera.get_matrices(&platform)?;
 
